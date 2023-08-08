@@ -225,10 +225,8 @@ def construct_output_tiers(
                 if (
                     data[utt.speaker.name]["words"]
                     and clitic_marker
-                    and (
-                        data[utt.speaker.name]["words"][-1].label.endswith(clitic_marker)
-                        or label.startswith(clitic_marker)
-                    )
+                    and words_separated_by_marker(data[utt.speaker.name]["words"][-1].label, label, clitic_marker)
+                    and not words_separated_by_comma(i, utt.normalized_text, utt.text)
                 ):
                     data[utt.speaker.name]["words"][-1].end = wi.end
                     data[utt.speaker.name]["words"][-1].label += label
@@ -390,3 +388,28 @@ def export_textgrid(
                 format=output_format,
                 reportingMode="error",
             )
+
+
+COMMA_SEPARATOR = ','
+
+# Logic used by MFA to determine if a clitic marker or other punctuation
+# is present between two words.
+def words_separated_by_marker(prev_word, word, marker):
+  return prev_word.endswith(marker) or word.startswith(marker)
+
+
+# Normalizes whitespace and lowercases the text, but keeps original punctuation
+def normalize_text(text: str):
+    return [w for w in text.strip().lower().split() if w]  # Remove extra spaces
+
+
+# Checks if there is a comma in between the words at a particular index
+# Takes in the mfa normalized text and non-normalized text to ensure
+# text alignment matches between the two.
+def words_separated_by_comma(index, normalized_text: str, text: str):
+    normalized_text = normalized_text.split()
+    normalized_text_with_punctuation = normalize_text(text)
+    assert len(normalized_text) == len(normalized_text_with_punctuation), 'Difference in text length detected'
+
+    prev_word, word = normalized_text_with_punctuation[index - 1], normalized_text_with_punctuation[index]
+    return words_separated_by_marker(prev_word, word, COMMA_SEPARATOR)
